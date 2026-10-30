@@ -3,6 +3,7 @@ package com.contactmanagement.service;
 import com.contactmanagement.dto.ContactRequest;
 import com.contactmanagement.dto.ContactResponse;
 import com.contactmanagement.entity.Contact;
+import com.contactmanagement.exception.ContactNotFoundException;
 import com.contactmanagement.exception.DuplicateEmailException;
 import com.contactmanagement.repository.ContactRepository;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+
+import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -83,6 +87,139 @@ class ContactServiceTest {
         assertThatThrownBy(() -> contactService.createContact(validRequest()))
                 .isInstanceOf(DuplicateEmailException.class)
                 .hasMessageContaining("john@example.com");
+    }
+
+    @Test
+    void getContactsReturnsEveryContactWhenSearchIsBlank() {
+        when(contactRepository.findAllByOrderByIdAsc()).thenReturn(List.of(
+                contact(1L, "Jane", "jane@example.com", "1111111111"),
+                contact(2L, "John", "john@example.com", "9876543210")));
+
+        List<ContactResponse> responses = contactService.getContacts("   ");
+
+        assertThat(responses).extracting(ContactResponse::getEmail)
+                .containsExactly("jane@example.com", "john@example.com");
+        verify(contactRepository, never()).search(any());
+    }
+
+    @Test
+    void getContactReturnsTheSavedContact() {
+        when(contactRepository.findById(1L)).thenReturn(Optional.of(
+                contact(1L, "John", "john@example.com", "9876543210")));
+
+        ContactResponse response = contactService.getContact(1L);
+
+        assertThat(response.getId()).isEqualTo(1L);
+        assertThat(response.getFirstName()).isEqualTo("John");
+        assertThat(response.getEmail()).isEqualTo("john@example.com");
+    }
+
+    @Test
+    void getContactThrowsWhenIdDoesNotExist() {
+        when(contactRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> contactService.getContact(99L))
+                .isInstanceOf(ContactNotFoundException.class)
+                .hasMessage("Contact with id 99 was not found");
+    }
+
+    @Test
+    void updateContactKeepsItsOwnEmailAndSavesNewValues() {
+        when(contactRepository.findById(1L)).thenReturn(Optional.of(
+                contact(1L, "John", "john@example.com", "9876543210")));
+        when(contactRepository.existsByEmailAndIdNot("john@example.com", 1L)).thenReturn(false);
+        when(contactRepository.save(any(Contact.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ContactRequest request = validRequest();
+        request.setFirstName("  Jonathan  ");
+        request.setEmail("  JOHN@example.com  ");
+        request.setCompany("   ");
+
+        ContactResponse response = contactService.updateContact(1L, request);
+
+        ArgumentCaptor<Contact> saved = ArgumentCaptor.forClass(Contact.class);
+        verify(contactRepository).save(saved.capture());
+        assertThat(saved.getValue().getId()).isEqualTo(1L);
+        assertThat(saved.getValue().getFirstName()).isEqualTo("Jonathan");
+        assertThat(saved.getValue().getEmail()).isEqualTo("john@example.com");
+        assertThat(saved.getValue().getCompany()).isNull();
+        assertThat(response.getFirstName()).isEqualTo("Jonathan");
+        assertThat(response.getEmail()).isEqualTo("john@example.com");
+        verify(contactRepository, never()).existsByEmail(any());
+    }
+
+    @Test
+    void updateContactRejectsEmailUsedByAnotherContact() {
+        when(contactRepository.findById(1L)).thenReturn(Optional.of(
+                contact(1L, "John", "john@example.com", "9876543210")));
+        when(contactRepository.existsByEmailAndIdNot("jane@example.com", 1L)).thenReturn(true);
+
+        ContactRequest request = validRequest();
+        request.setEmail("jane@example.com");
+
+        assertThatThrownBy(() -> contactService.updateContact(1L, request))
+                .isInstanceOf(DuplicateEmailException.class)
+                .hasMessage("A contact with email jane@example.com already exists");
+
+        verify(contactRepository, never()).save(any());
+    }
+
+    @Test
+    void updateContactThrowsWhenIdDoesNotExist() {
+        when(contactRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> contactService.updateContact(99L, validRequest()))
+                .isInstanceOf(ContactNotFoundException.class)
+                .hasMessage("Contact with id 99 was not found");
+
+        verify(contactRepository, never()).save(any());
+    }
+
+    @Test
+    void deleteContactDeletesAnExistingContact() {
+        when(contactRepository.existsById(1L)).thenReturn(true);
+
+        contactService.deleteContact(1L);
+
+        verify(contactRepository).deleteById(1L);
+    }
+
+    @Test
+    void deleteContactThrowsWhenIdDoesNotExist() {
+        when(contactRepository.existsById(99L)).thenReturn(false);
+
+        assertThatThrownBy(() -> contactService.deleteContact(99L))
+                .isInstanceOf(ContactNotFoundException.class)
+                .hasMessage("Contact with id 99 was not found");
+
+        verify(contactRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void searchContactsReturnsMatchesForTheTrimmedTerm() {
+        when(contactRepository.search("john")).thenReturn(List.of(
+                contact(1L, "John", "john@example.com", "9876543210")));
+
+        List<ContactResponse> responses = contactService.getContacts("  john  ");
+
+        assertThat(responses).extracting(ContactResponse::getPhone).containsExactly("9876543210");
+    }
+
+    @Test
+    void searchContactsReturnsEmptyListWhenNothingMatches() {
+        when(contactRepository.search("missing")).thenReturn(List.of());
+
+        assertThat(contactService.getContacts("missing")).isEmpty();
+    }
+
+    private Contact contact(Long id, String firstName, String email, String phone) {
+        Contact contact = new Contact();
+        contact.setId(id);
+        contact.setFirstName(firstName);
+        contact.setLastName("David");
+        contact.setEmail(email);
+        contact.setPhone(phone);
+        return contact;
     }
 
     private ContactRequest validRequest() {
