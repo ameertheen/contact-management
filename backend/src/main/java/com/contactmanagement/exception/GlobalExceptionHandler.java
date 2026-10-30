@@ -45,4 +45,13 @@ public class GlobalExceptionHandler {
                 List.of(exception.getMessage()));
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
+
+    @ExceptionHandler(ContactNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleContactNotFound(ContactNotFoundException exception) {
+        ErrorResponse body = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "Contact not found",
+                List.of(exception.getMessage()));
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
 }
