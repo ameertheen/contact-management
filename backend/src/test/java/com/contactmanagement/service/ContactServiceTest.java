@@ -5,6 +5,7 @@ import com.contactmanagement.dto.ContactResponse;
 import com.contactmanagement.entity.Contact;
 import com.contactmanagement.exception.ContactNotFoundException;
 import com.contactmanagement.exception.DuplicateEmailException;
+import com.contactmanagement.exception.DuplicatePhoneException;
 import com.contactmanagement.repository.ContactRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,7 +21,9 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -76,6 +79,50 @@ class ContactServiceTest {
                 .hasMessage("A contact with email john@example.com already exists");
 
         verify(contactRepository, never()).save(any());
+    }
+
+    @Test
+    void createContactRejectsDuplicatePhoneBeforeSave() {
+        when(contactRepository.existsByEmail("john@example.com")).thenReturn(false);
+        when(contactRepository.existsByPhone("9876543210")).thenReturn(true);
+
+        assertThatThrownBy(() -> contactService.createContact(validRequest()))
+                .isInstanceOf(DuplicatePhoneException.class)
+                .hasMessage("This mobile number is already registered.");
+
+        verify(contactRepository, never()).save(any());
+    }
+
+    @Test
+    void createContactAllowsDifferentPhoneNumbers() {
+        when(contactRepository.existsByEmail(anyString())).thenReturn(false);
+        when(contactRepository.existsByPhone(anyString())).thenReturn(false);
+        when(contactRepository.save(any(Contact.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ContactRequest first = validRequest();
+        ContactRequest second = validRequest();
+        second.setEmail("jane@example.com");
+        second.setPhone("9123456789");
+
+        contactService.createContact(first);
+        contactService.createContact(second);
+
+        ArgumentCaptor<Contact> saved = ArgumentCaptor.forClass(Contact.class);
+        verify(contactRepository, times(2)).save(saved.capture());
+        assertThat(saved.getAllValues()).extracting(Contact::getPhone)
+                .containsExactly("9876543210", "9123456789");
+    }
+
+    @Test
+    void createContactTurnsDatabasePhoneViolationIntoDuplicatePhone() {
+        when(contactRepository.existsByEmail("john@example.com")).thenReturn(false);
+        when(contactRepository.existsByPhone("9876543210")).thenReturn(false);
+        when(contactRepository.save(any(Contact.class)))
+                .thenThrow(new DataIntegrityViolationException("UNIQUE constraint failed: contacts.phone"));
+
+        assertThatThrownBy(() -> contactService.createContact(validRequest()))
+                .isInstanceOf(DuplicatePhoneException.class)
+                .hasMessage("This mobile number is already registered.");
     }
 
     @Test
@@ -146,6 +193,41 @@ class ContactServiceTest {
         assertThat(response.getFirstName()).isEqualTo("Jonathan");
         assertThat(response.getEmail()).isEqualTo("john@example.com");
         verify(contactRepository, never()).existsByEmail(any());
+    }
+
+    @Test
+    void updateContactKeepsItsOwnPhone() {
+        when(contactRepository.findById(1L)).thenReturn(Optional.of(
+                contact(1L, "John", "john@example.com", "9876543210")));
+        when(contactRepository.existsByEmailAndIdNot("john@example.com", 1L)).thenReturn(false);
+        when(contactRepository.existsByPhoneAndIdNot("9876543210", 1L)).thenReturn(false);
+        when(contactRepository.save(any(Contact.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ContactRequest request = validRequest();
+        request.setFirstName("Jonathan");
+
+        ContactResponse response = contactService.updateContact(1L, request);
+
+        assertThat(response.getPhone()).isEqualTo("9876543210");
+        assertThat(response.getFirstName()).isEqualTo("Jonathan");
+        verify(contactRepository).existsByPhoneAndIdNot("9876543210", 1L);
+    }
+
+    @Test
+    void updateContactRejectsPhoneUsedByAnotherContact() {
+        when(contactRepository.findById(1L)).thenReturn(Optional.of(
+                contact(1L, "John", "john@example.com", "9876543210")));
+        when(contactRepository.existsByEmailAndIdNot("john@example.com", 1L)).thenReturn(false);
+        when(contactRepository.existsByPhoneAndIdNot("9123456789", 1L)).thenReturn(true);
+
+        ContactRequest request = validRequest();
+        request.setPhone("9123456789");
+
+        assertThatThrownBy(() -> contactService.updateContact(1L, request))
+                .isInstanceOf(DuplicatePhoneException.class)
+                .hasMessage("This mobile number is already registered.");
+
+        verify(contactRepository, never()).save(any());
     }
 
     @Test

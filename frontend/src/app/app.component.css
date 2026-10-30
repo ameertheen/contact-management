@@ -1,0 +1,12 @@
+.navbar-brand {
+  font-weight: 600;
+}
+
+.navbar .container {
+  row-gap: 0.25rem;
+}
+
+.navbar-nav {
+  flex-direction: row;
+  flex-wrap: wrap;
+}

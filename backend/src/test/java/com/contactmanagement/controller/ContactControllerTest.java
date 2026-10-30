@@ -114,6 +114,34 @@ class ContactControllerTest {
     }
 
     @Test
+    void createContactReturnsConflictWhenPhoneAlreadyExists() throws Exception {
+        createContact("john@example.com", "John", "David", "9876543210");
+
+        mockMvc.perform(post("/api/contacts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(contactJson("jane@example.com", "Jane", "Roe", "9876543210")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Phone already exists"))
+                .andExpect(jsonPath("$.messages", hasItem("This mobile number is already registered.")));
+    }
+
+    @Test
+    void createContactsWithDifferentPhoneNumbers() throws Exception {
+        mockMvc.perform(post("/api/contacts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(contactJson("john@example.com", "John", "David", "9876543210")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.phone").value("9876543210"));
+
+        mockMvc.perform(post("/api/contacts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(contactJson("jane@example.com", "Jane", "Roe", "9123456789")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.phone").value("9123456789"));
+    }
+
+    @Test
     void getContactsReturnsAllContacts() throws Exception {
         mockMvc.perform(get("/api/contacts"))
                 .andExpect(status().isOk())
@@ -202,6 +230,37 @@ class ContactControllerTest {
         mockMvc.perform(get("/api/contacts/{id}", johnId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("john@example.com"));
+    }
+
+    @Test
+    void updateContactReturnsConflictWhenPhoneBelongsToAnotherContact() throws Exception {
+        createContact("jane@example.com", "Jane", "Roe", "9123456789");
+        long johnId = createContact("john@example.com", "John", "David", "9876543210");
+
+        mockMvc.perform(put("/api/contacts/{id}", johnId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(contactJson("john@example.com", "John", "David", "9123456789")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Phone already exists"))
+                .andExpect(jsonPath("$.messages", hasItem("This mobile number is already registered.")));
+
+        mockMvc.perform(get("/api/contacts/{id}", johnId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.phone").value("9876543210"));
+    }
+
+    @Test
+    void updateContactKeepsItsOwnPhone() throws Exception {
+        long id = createContact("john@example.com", "John", "David", "9876543210");
+
+        mockMvc.perform(put("/api/contacts/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(contactJson("john@example.com", "Jonathan", "David", "9876543210")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.firstName").value("Jonathan"))
+                .andExpect(jsonPath("$.phone").value("9876543210"));
     }
 
     @Test

@@ -1,0 +1,151 @@
+<app-status-message
+  [loading]="loading || saving"
+  [errorMessage]="errorMessage"
+  [loadingText]="saving ? 'Saving contact...' : 'Loading contact...'">
+</app-status-message>
+
+<div class="alert alert-danger" *ngIf="serverMessages.length > 0" role="alert">
+  <ul class="mb-0 ps-3">
+    <li *ngFor="let message of serverMessages">{{ message }}</li>
+  </ul>
+</div>
+
+<div class="row justify-content-center" *ngIf="!loading && !missing">
+  <div class="col-12 col-xl-10">
+    <h1 class="h3 mb-3">{{ isEdit ? 'Edit contact' : 'New contact' }}</h1>
+
+    <form [formGroup]="contactForm" (ngSubmit)="onSubmit()" (keydown.enter)="onEnter($event)" class="card shadow-sm" novalidate>
+      <div class="card-body">
+        <h2 class="h6 text-uppercase text-muted">Name</h2>
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-md-6">
+            <label class="form-label" for="firstName">First name</label>
+            <input
+              id="firstName"
+              class="form-control"
+              formControlName="firstName"
+              placeholder="John"
+              [class.is-invalid]="showError(contactForm.controls.firstName)" />
+            <div class="invalid-feedback" *ngIf="fieldError(contactForm.controls.firstName, 'First name is required.', 'First name must be at most 100 characters.') as message">
+              {{ message }}
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label" for="lastName">Last name</label>
+            <input
+              id="lastName"
+              class="form-control"
+              formControlName="lastName"
+              placeholder="David"
+              [class.is-invalid]="showError(contactForm.controls.lastName)" />
+            <div class="invalid-feedback" *ngIf="fieldError(contactForm.controls.lastName, 'Last name is required.', 'Last name must be at most 100 characters.') as message">
+              {{ message }}
+            </div>
+          </div>
+        </div>
+
+        <h2 class="h6 text-uppercase text-muted">Contact details</h2>
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-md-6">
+            <label class="form-label" for="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              class="form-control"
+              formControlName="email"
+              placeholder="john@example.com"
+              [class.is-invalid]="showError(contactForm.controls.email)" />
+            <div class="invalid-feedback" *ngIf="fieldError(contactForm.controls.email, 'Email is required.', 'Email must be at most 255 characters.', 'Enter a valid email address.') as message">
+              {{ message }}
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label" for="phone">Phone</label>
+            <input
+              id="phone"
+              class="form-control"
+              formControlName="phone"
+              placeholder="9876543210"
+              [class.is-invalid]="showError(contactForm.controls.phone)" />
+            <div class="invalid-feedback" *ngIf="fieldError(contactForm.controls.phone, 'Phone number is required.', 'Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9.') as message">
+              {{ message }}
+            </div>
+          </div>
+        </div>
+
+        <h2 class="h6 text-uppercase text-muted">Work</h2>
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-md-6">
+            <label class="form-label" for="company">Company</label>
+            <input
+              id="company"
+              class="form-control"
+              formControlName="company"
+              placeholder="ABC Technologies"
+              [class.is-invalid]="showError(contactForm.controls.company)" />
+            <div class="invalid-feedback" *ngIf="fieldError(contactForm.controls.company, '', 'Company must be at most 150 characters.') as message">
+              {{ message }}
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="form-label" for="jobTitle">Job title</label>
+            <input
+              id="jobTitle"
+              class="form-control"
+              formControlName="jobTitle"
+              placeholder="Software Engineer"
+              [class.is-invalid]="showError(contactForm.controls.jobTitle)" />
+            <div class="invalid-feedback" *ngIf="fieldError(contactForm.controls.jobTitle, '', 'Job title must be at most 150 characters.') as message">
+              {{ message }}
+            </div>
+          </div>
+        </div>
+
+        <h2 class="h6 text-uppercase text-muted">Additional information</h2>
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label" for="address">Address</label>
+            <input
+              id="address"
+              class="form-control"
+              formControlName="address"
+              placeholder="Chennai"
+              [class.is-invalid]="showError(contactForm.controls.address)" />
+            <div class="invalid-feedback" *ngIf="fieldError(contactForm.controls.address, '', 'Address must be at most 255 characters.') as message">
+              {{ message }}
+            </div>
+          </div>
+          <div class="col-12">
+            <label class="form-label" for="notes">Notes</label>
+            <textarea
+              id="notes"
+              class="form-control"
+              rows="3"
+              formControlName="notes"
+              placeholder="Business contact"
+              [class.is-invalid]="showError(contactForm.controls.notes)"></textarea>
+            <div class="invalid-feedback" *ngIf="fieldError(contactForm.controls.notes, '', 'Notes must be at most 2000 characters.') as message">
+              {{ message }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-footer">
+        <div class="d-grid gap-2 d-sm-flex">
+          <span class="d-grid" (click)="onSubmit()">
+            <button class="btn btn-primary" type="submit" [disabled]="contactForm.invalid || saving || loading" style="pointer-events: none">
+              <span *ngIf="saving" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+              {{ saving ? 'Saving...' : 'Save' }}
+            </button>
+          </span>
+          <a class="btn btn-outline-secondary" routerLink="/contacts">Cancel</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div *ngIf="!loading && missing">
+  <a class="btn btn-outline-secondary" routerLink="/contacts">Back to contacts</a>
+</div>

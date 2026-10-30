@@ -46,6 +46,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
+    @ExceptionHandler(DuplicatePhoneException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicatePhone(DuplicatePhoneException exception) {
+        ErrorResponse body = new ErrorResponse(
+                HttpStatus.CONFLICT.value(),
+                "Phone already exists",
+                List.of(exception.getMessage()));
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
     @ExceptionHandler(ContactNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleContactNotFound(ContactNotFoundException exception) {
         ErrorResponse body = new ErrorResponse(
