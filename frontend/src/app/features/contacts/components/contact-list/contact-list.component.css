@@ -1,0 +1,63 @@
+.contact-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.contact-col-name {
+  width: 18%;
+}
+
+.contact-col-email {
+  width: 28%;
+}
+
+.contact-col-phone {
+  width: 14%;
+}
+
+.contact-col-company {
+  width: 18%;
+}
+
+.contact-col-actions {
+  width: 22%;
+}
+
+.contact-table th,
+.contact-table td,
+.contact-card dd {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.contact-table th {
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+}
+
+.contact-table-wrap {
+  overflow-x: auto;
+}
+
+.contact-card dt {
+  color: #6c757d;
+  font-weight: 600;
+}
+
+.contact-actions .btn {
+  white-space: nowrap;
+}
+
+.page-size-select {
+  width: 4.5rem;
+}
+
+.contact-pagination .pagination {
+  row-gap: 0.25rem;
+}
+
+@media (max-width: 767.98px) {
+  .contact-pagination .page-link {
+    padding: 0.35rem 0.65rem;
+  }
+}

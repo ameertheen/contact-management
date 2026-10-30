@@ -5,6 +5,7 @@ import com.contactmanagement.dto.ContactResponse;
 import com.contactmanagement.entity.Contact;
 import com.contactmanagement.exception.ContactNotFoundException;
 import com.contactmanagement.exception.DuplicateEmailException;
+import com.contactmanagement.exception.DuplicatePhoneException;
 import com.contactmanagement.repository.ContactRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -25,15 +26,19 @@ public class ContactService {
     @Transactional
     public ContactResponse createContact(ContactRequest request) {
         String email = normalizeEmail(request.getEmail());
+        String phone = request.getPhone().trim();
         if (contactRepository.existsByEmail(email)) {
             throw new DuplicateEmailException(email);
+        }
+        if (contactRepository.existsByPhone(phone)) {
+            throw new DuplicatePhoneException();
         }
 
         Contact contact = new Contact();
         contact.setFirstName(request.getFirstName().trim());
         contact.setLastName(request.getLastName().trim());
         contact.setEmail(email);
-        contact.setPhone(request.getPhone().trim());
+        contact.setPhone(phone);
         contact.setCompany(trimToNull(request.getCompany()));
         contact.setJobTitle(trimToNull(request.getJobTitle()));
         contact.setAddress(trimToNull(request.getAddress()));
@@ -42,7 +47,7 @@ public class ContactService {
         try {
             return toResponse(contactRepository.save(contact));
         } catch (DataIntegrityViolationException exception) {
-            throw new DuplicateEmailException(email);
+            throw duplicateFromIntegrityViolation(exception, email);
         }
     }
 
@@ -67,14 +72,18 @@ public class ContactService {
     public ContactResponse updateContact(Long id, ContactRequest request) {
         Contact contact = findContact(id);
         String email = normalizeEmail(request.getEmail());
+        String phone = request.getPhone().trim();
         if (contactRepository.existsByEmailAndIdNot(email, id)) {
             throw new DuplicateEmailException(email);
+        }
+        if (contactRepository.existsByPhoneAndIdNot(phone, id)) {
+            throw new DuplicatePhoneException();
         }
 
         contact.setFirstName(request.getFirstName().trim());
         contact.setLastName(request.getLastName().trim());
         contact.setEmail(email);
-        contact.setPhone(request.getPhone().trim());
+        contact.setPhone(phone);
         contact.setCompany(trimToNull(request.getCompany()));
         contact.setJobTitle(trimToNull(request.getJobTitle()));
         contact.setAddress(trimToNull(request.getAddress()));
@@ -83,7 +92,7 @@ public class ContactService {
         try {
             return toResponse(contactRepository.save(contact));
         } catch (DataIntegrityViolationException exception) {
-            throw new DuplicateEmailException(email);
+            throw duplicateFromIntegrityViolation(exception, email);
         }
     }
 
@@ -98,6 +107,26 @@ public class ContactService {
     private Contact findContact(Long id) {
         return contactRepository.findById(id)
                 .orElseThrow(() -> new ContactNotFoundException(id));
+    }
+
+    private RuntimeException duplicateFromIntegrityViolation(DataIntegrityViolationException exception, String email) {
+        String details = exceptionText(exception).toLowerCase(Locale.ROOT);
+        if (details.contains("phone")) {
+            return new DuplicatePhoneException();
+        }
+        return new DuplicateEmailException(email);
+    }
+
+    private String exceptionText(Throwable exception) {
+        StringBuilder text = new StringBuilder();
+        Throwable current = exception;
+        while (current != null) {
+            if (current.getMessage() != null) {
+                text.append(current.getMessage()).append('\n');
+            }
+            current = current.getCause();
+        }
+        return text.toString();
     }
 
     private String normalizeEmail(String email) {

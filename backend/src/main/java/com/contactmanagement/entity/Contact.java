@@ -42,7 +42,7 @@ public class Contact {
 
     @NotBlank
     @Size(max = 30)
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, unique = true, length = 30)
     private String phone;
 
     @Size(max = 150)

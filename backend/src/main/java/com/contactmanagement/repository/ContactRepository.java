@@ -13,6 +13,10 @@ public interface ContactRepository extends JpaRepository<Contact, Long> {
 
     boolean existsByEmailAndIdNot(String email, Long id);
 
+    boolean existsByPhone(String phone);
+
+    boolean existsByPhoneAndIdNot(String phone, Long id);
+
     List<Contact> findAllByOrderByIdAsc();
 
     @Query("""

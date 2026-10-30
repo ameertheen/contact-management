@@ -1,0 +1,44 @@
+<app-status-message
+  [loading]="loading"
+  [errorMessage]="errorMessage"
+  loadingText="Loading contact...">
+</app-status-message>
+
+<div class="row justify-content-center" *ngIf="!loading && contact">
+  <div class="col-12 col-lg-8">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h1 class="h3 mb-0">{{ contact.firstName }} {{ contact.lastName }}</h1>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4">First name</dt>
+          <dd class="col-sm-8">{{ display(contact.firstName) }}</dd>
+          <dt class="col-sm-4">Last name</dt>
+          <dd class="col-sm-8">{{ display(contact.lastName) }}</dd>
+          <dt class="col-sm-4">Email</dt>
+          <dd class="col-sm-8">{{ display(contact.email) }}</dd>
+          <dt class="col-sm-4">Phone</dt>
+          <dd class="col-sm-8">{{ display(contact.phone) }}</dd>
+          <dt class="col-sm-4">Company</dt>
+          <dd class="col-sm-8">{{ display(contact.company) }}</dd>
+          <dt class="col-sm-4">Job title</dt>
+          <dd class="col-sm-8">{{ display(contact.jobTitle) }}</dd>
+          <dt class="col-sm-4">Address</dt>
+          <dd class="col-sm-8">{{ display(contact.address) }}</dd>
+          <dt class="col-sm-4">Notes</dt>
+          <dd class="col-sm-8 mb-0">{{ display(contact.notes) }}</dd>
+        </dl>
+      </div>
+      <div class="card-footer d-grid gap-2 d-sm-flex">
+        <a class="btn btn-primary" [routerLink]="['/contacts', contact.id, 'edit']">Edit</a>
+        <a class="btn btn-outline-secondary" routerLink="/contacts">Back to contacts</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="!loading && missing">
+  <a class="btn btn-outline-secondary" routerLink="/contacts">Back to contacts</a>
+</div>
